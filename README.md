@@ -110,49 +110,61 @@ stablecoin-payment-system/
 │       ├── ci.yml
 │       └── deploy.yml
 │
-├── onchain/                           # Multi-Crate Performance Sandbox
-│   ├── Anchor.toml                    # Orchestrates both reference and native targets
-│   ├── Cargo.toml                     # Workspace root grouping the independent program crates
-│   ├── benches/                       # ⚡ Side-by-side Compute Unit profiling modules
-│   │   └── execution_footprint.rs
-│   ├── migrations/
-│   │   └── deploy.ts
-│   ├── programs/
-│   │   ├── anchor_stablecoin/         # 🏢 High-Level Framework Reference Crate
-│   │   │   ├── Cargo.toml
-│   │   │   └── src/
-│   │   │       ├── lib.rs             # Injects full Borsh/Anchor routing stack
-│   │   │       ├── errors.rs
-│   │   │       ├── instructions/
-│   │   │       │   ├── initialize.rs
-│   │   │       │   ├── mint_tokens.rs
-│   │   │       │   └── burn_tokens.rs
-│   │   │       └── state/
-│   │   │           └── account_layouts.rs
-│   │   │
-│   │   └── native_stablecoin/         # 🚀 Ultra-Performance Native Zero-Copy Crate
-│   │       ├── Cargo.toml
-│   │       └── src/
-│   │           ├── entrypoint.rs      # Naked entrypoint!(process_instruction); with zero framework bloat
-│   │           ├── processor.rs       # Direct C-ABI instruction variant execution router
-│   │           ├── errors.rs
-│   │           ├── instructions/
-│   │           │   ├── initialize.rs  # Uses raw zero-copy byte window modification
-│   │           │   ├── mint.rs
-│   │           │   ├── burn.rs
-│   │           │   └── transfer_hook.rs
-│   │           ├── state.rs           # Minimalist memory layouts with unaligned primitive arrays
-│   │           └── utils/
-│   │               ├── mod.rs
-│   │               └── zerocopy_parser.rs # 🧠 Explicit bytemuck pointer-casting engine
-│   └── tests/
-│       ├── anchor_suite.test.ts
-│       ├── native_suite.test.ts
-│       └── fuzz/                      # 🛡️ Trident property-based invariant testing suite
-│           ├── Cargo.toml
-│           ├── fuzz_config.toml
-│           └── instructions.rs
-│
+└── onchain/
+|    ├── Anchor.toml                    # Workspace test orchestrator and cluster configurations
+|    ├── Cargo.toml                     # Virtual workspace root defining members and profile.release limits
+|    ├── package.json                   # TS client dependencies for integration tests
+|    ├── tsconfig.json
+|    │
+|    ├── programs/
+|    │   ├── shared_memory/             # 🧠 THE SINGLE SOURCE OF TRUTH (No Executable Logic)
+|    │   │   ├── Cargo.toml             # Defines `anchor-bridge` and `native-bridge` features
+|    │   │   └── src/
+|    │   │       ├── lib.rs
+|    │   │       ├── state.rs           # Conditionally compiled #[repr(C)] structs
+|    │   │       ├── instructions.rs    # Raw byte payloads for the orchestrator
+|    │   │       └── error.rs           # Shared custom error codes
+|    │   │
+|    │   ├── anchor_stablecoin/         # 🏢 CONTROL PLANE (Admin, Governance, IDL)
+|    │   │   ├── Cargo.toml             # Imports shared_memory with 'anchor-bridge'
+|    │   │   ├── Xargo.toml             # BPF compilation targets
+|    │   │   └── src/
+|    │   │       ├── lib.rs             # IDL Generation and routing
+|    │   │       ├── instructions/
+|    │   │       │   ├── initialize.rs  # Vault creation (Anchor Contexts)
+|    │   │       │   └── admin.rs       # Threshold & fee configurations
+|    │   │       └── events.rs
+|    │   │
+|    │   └── native_stablecoin/         # 🚀 DATA PLANE (Zero-Copy JIT Execution)
+|    │       ├── Cargo.toml             # Imports shared_memory with 'native-bridge'
+|    │       └── src/
+|    │           ├── entrypoint.rs      # Naked process_instruction mapping
+|    │           ├── processor.rs       # Raw C-ABI routing
+|    │           ├── state_parser.rs    # Bytemuck slice projection engine
+|    │           └── instructions/
+|    │               ├── mint_jit.rs    # Sub-millisecond fiat bridging
+|    │               ├── liquidate.rs
+|    │               └── settle.rs
+|    │
+|    └── tests/                         # 🛡️ THE VALIDATION MATRIX
+|        ├── integration/               # E2E PWA & Orchestrator Simulation
+|        │   ├── setup.ts               # LocalValidator spins up both programs
+|        │   ├── 01_admin_flow.test.ts  # Tests Anchor Control Plane
+|        │   └── 02_jit_execution.test.ts # Tests Orchestrator -> Native Data Plane
+|        │
+|        ├── bpf/                       # Low-level Rust BankClient testing
+|        │   ├── Cargo.toml
+|        │   └── src/
+|        │       ├── zero_copy_alignment.rs # Panics if memory padding is detected
+|        │       └── compute_budget.rs      # Hard-fails if Native instruction > 20,000 CU
+|        │
+|        └── fuzz/                      # Trident Property-Based Testing
+|            ├── Cargo.toml
+|            ├── Trident.toml           
+|            └── src/
+|                ├── invariants.rs      # Asserts collateral == debt across 100k random txs
+|                └── instructions.rs
+|
 ├── orchestrator/                      # High-Velocity Corporate Routing Server (Rust)
 │   ├── Cargo.toml
 │   ├── Cargo.lock
