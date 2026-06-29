@@ -1,0 +1,15 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build and Push Docker Image
+        run: |
+          echo "Building and deploying orchestrator..."

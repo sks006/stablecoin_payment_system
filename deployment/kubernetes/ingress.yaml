@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stablecoin-payment-orchestrator
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.stablecoin-payment.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: stablecoin-payment-orchestrator
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - api.stablecoin-payment.com
+    secretName: stablecoin-payment-tls

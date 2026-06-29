@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stablecoin-payment-orchestrator
+  labels:
+    app: stablecoin-payment-orchestrator
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: stablecoin-payment-orchestrator
+  template:
+    metadata:
+      labels:
+        app: stablecoin-payment-orchestrator
+    spec:
+      containers:
+      - name: orchestrator
+        image: stablecoin-payment-orchestrator:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: orchestrator-config
+        - secretRef:
+            name: orchestrator-secrets
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: "500m"
+            memory: 1Gi

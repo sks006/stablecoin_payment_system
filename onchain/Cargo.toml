@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "programs/shared_memory",
+    "programs/anchor_stablecoin",
+    "programs/native_stablecoin",
+    "tests/bpf",
+    "tests/fuzz"
+]
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
