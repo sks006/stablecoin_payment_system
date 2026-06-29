@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  rust-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run Orchestrator Tests
+        run: cargo test --manifest-path orchestrator/Cargo.toml
+
+  anchor-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Solana & Anchor
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.16.0/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          npm install -g @coral-xyz/anchor-cli@0.28.0
+      - name: Run Anchor Integration Tests
+        run: |
+          cd onchain
+          npm install
+          anchor test

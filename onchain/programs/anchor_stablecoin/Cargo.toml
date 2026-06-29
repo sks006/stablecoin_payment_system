@@ -1,0 +1,19 @@
+[package]
+name = "anchor-stablecoin"
+version = "0.1.0"
+description = "Control plane for stablecoin payment system"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "anchor_stablecoin"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.28.0"
+shared-memory = { path = "../shared_memory", features = ["anchor-bridge"] }

@@ -1,0 +1,47 @@
+openapi: 3.0.0
+info:
+  title: Stablecoin Payment System API
+  version: 1.0.0
+paths:
+  /api/v1/mint:
+    post:
+      summary: Mint stablecoins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idempotency_key:
+                  type: string
+                amount:
+                  type: integer
+                recipient:
+                  type: string
+      responses:
+        '202':
+          description: Accepted
+  /api/v1/transfer:
+    post:
+      summary: Submit transfer intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idempotency_key:
+                  type: string
+                amount:
+                  type: integer
+                sender:
+                  type: string
+                recipient:
+                  type: string
+                signature:
+                  type: string
+      responses:
+        '202':
+          description: Accepted

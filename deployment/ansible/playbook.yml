@@ -1,0 +1,17 @@
+- name: Deploy Stablecoin Payment System
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure docker is installed
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Copy docker-compose config
+      copy:
+        src: ../../docker-compose.yml
+        dest: /opt/stablecoin/docker-compose.yml
+
+    - name: Start services
+      shell: docker-compose -f /opt/stablecoin/docker-compose.yml up -d
