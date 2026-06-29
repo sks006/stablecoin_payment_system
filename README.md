@@ -3,23 +3,25 @@
 > A high-performance, dual-implementation (Anchor reference + native zero-copy) Solana stablecoin payment rail with an enterprise-grade orchestrator, idempotent APIs, webhook reliability, and future-proof on-chain state.
 
 ## 📑 Table of Contents
-1. [System Architecture](#-system-architecture)
-2. [Directory Structure](#-directory-structure)
-3. [Master Invariant List](#-master-invariant-list)
-4. [Subsystem Threat Matrix & Mitigations](#-subsystem-threat-matrix--mitigations)
+
+1. [System Architecture](https://www.google.com/search?q=%23-system-architecture)
+2. [Directory Structure](https://www.google.com/search?q=%23-directory-structure)
+3. [Master Invariant List](https://www.google.com/search?q=%23-master-invariant-list)
+4. [Subsystem Threat Matrix & Mitigations](https://www.google.com/search?q=%23-subsystem-threat-matrix--mitigations)
 
 ---
 
 ## 🏛️ System Architecture
 
-### 1. Macro Execution Flow (Web-First NFC to Settlement)
-The logical data flow enforces strict separation of concerns. The Web PWA handles the physical tap simulation and cryptographic signing, while the Orchestrator acts solely as a non-custodial audit and routing layer, bypassing mempool latency via direct TPU/Jito submission.
+### 1. Macro Execution Flow (Web-First Cryptographic Intent to Settlement)
+
+The logical data flow enforces strict separation of concerns. The Web PWA handles the QR/Payment Link resolution and non-custodial cryptographic signing. The Orchestrator acts solely as an audit and compilation layer, validating the payload nonce and bypassing mempool latency via direct TPU/Jito submission.
 
 ```mermaid
 flowchart TD
     subgraph Client ["Client Layer (TypeScript SDK)"]
-        A[Web PWA] -->|NFC Tap Simulation| B(Construct Raw TX)
-        B -->|Sign & Pack| C[User Signature Payload]
+        A[Web PWA] -->|QR Scan / Deep Link Resolution| B(Construct Raw TX Intent)
+        B -->|Wallet Sign & Pack| C[User Signature Payload]
     end
 
     subgraph Backend ["Orchestrator (Rust)"]
@@ -43,15 +45,16 @@ flowchart TD
         N --> O[Merchant Server]
     end
 
+
 ```
 
 ### 2. Idempotency & Delivery State Machine
 
-Network partitions will happen. The system guarantees exact-once execution using immutable database constraints mapped to Solana transaction signatures.
+Network partitions will happen. The system guarantees exact-once execution using immutable database constraints mapped to Solana transaction signatures, completely mitigating client-side retry floods.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending : Receive Valid Signature
+    [*] --> Pending : Receive Valid Signature Payload
     Pending --> OnChainSubmission : TPU / Jito Route
     
     OnChainSubmission --> Pending : Timeout / Blockhash Expired
@@ -65,6 +68,7 @@ stateDiagram-v2
     Failed --> [*]
     Delivered --> [*]
     DeadLetterQueue --> [*]
+
 
 ```
 
@@ -87,6 +91,7 @@ classDiagram
         +u64 state_flags (Bytes 120-127)
         +[u8; 256] reserved_buffer (Bytes 128-383)
     }
+
 
 ```
 
@@ -245,7 +250,7 @@ stablecoin-payment-system/
 │   ├── tsconfig.json
 │   ├── src/
 │   │   ├── index.ts
-│   │   ├── client.ts                  # Merchant initialization logic
+│   │   ├── client.ts                  # Merchant initialization and payload resolution logic
 │   │   ├── tx_builder.ts              # Sequential packing with ZERO alignment gaps
 │   │   └── types.ts
 │   └── tests/
@@ -267,6 +272,7 @@ stablecoin-payment-system/
     ├── architecture.md                # Structural technical blueprints
     ├── api_spec.yaml                  # OpenAPI 3.0 contract verification
     └── runbook.md                     # Crisis mitigation protocols
+
 
 ```
 
@@ -293,7 +299,7 @@ Every component engineered in this repository must strictly adhere to these 20 e
 15. **Zero Supply Edge:** Strict checks; explicitly allow `supply == 0` as a valid paused state.
 16. **Rent Exemption:** Block account closure if `supply != 0`.
 17. **Invariant Violations:** Trident fuzz suite must mathematically assert supply conservation.
-18. **Network Congestion:** Orchestrator exclusively handles idempotency keys.
+18. **Network Congestion:** Orchestrator exclusively handles idempotency keys and dynamically injects priority fees to the client payload.
 19. **Key Compromise:** Support authority updates + optional timelock.
 20. **Benchmarking:** Fail CI if Zero-Copy casts fail on misaligned data or CU spikes.
 
@@ -350,20 +356,20 @@ Every component engineered in this repository must strictly adhere to these 20 e
 
 | Edge case | Risk | Mitigation |
 | --- | --- | --- |
-| **Idempotency TTL replay** | Duplicate request re‑executes. | Store keys permanently in PostgreSQL (unique constraint). |
+| **Idempotency TTL replay** | Duplicate client request re‑executes. | Store signature intent keys permanently in PostgreSQL (unique constraint). |
 | **Idempotency collision** | Merchant requests hijack. | Prefix keys: `merchant_id:`. |
 | **DB migrations** | Table changes crash application. | Expand‑contract migrations (add -> dual-write -> drop). |
 | **API Schema versioning** | SDK breaks on new mandatory fields. | Version API (`/v1/...`) or use defaults forever. |
-| **State machine failure** | Double-mint on DB update crash. | Idempotent TX IDs; insert signature with `ON CONFLICT DO NOTHING`. |
+| **State machine failure** | Double-mint on DB update crash. | Idempotent TX IDs; insert signature payload with `ON CONFLICT DO NOTHING`. |
 
 #### 2.2 Solana Transaction Handling
 
 | Edge case | Risk | Mitigation |
 | --- | --- | --- |
 | **Shallow-fork rollback** | Webhook sent for reverted payment. | Wait for `finalized` commitment (32+ slots). |
-| **Priority fee wars** | TXs uneconomical. | Dynamic fee estimation + cap + fallback slow path. |
+| **Priority fee wars** | TXs uneconomical. | Orchestrator dynamically estimates fees + caps + injects into payload. |
 | **Jito bundle rejection** | TX ignored by leader. | Timeout and fallback to normal TPU. |
-| **KMS throttling** | Unable to sign. | In‑memory queue + backpressure + fallback KMS. |
+| **KMS throttling** | Unable to co-sign audit payload. | In‑memory queue + backpressure + fallback KMS. |
 | **Key rotation** | Old signatures invalid. | Accept list of authorised signer keys via PDA. |
 | **CPU serialisation mismatch** | Invalid TX consumes fees. | Fuzz instruction builder against native deserialiser. |
 
@@ -391,8 +397,8 @@ Every component engineered in this repository must strictly adhere to these 20 e
 | **New instruction added** | Client panics. | Version instruction set; pass `Unknown` raw bytes. |
 | **Account layout mismatch** | Reads garbage. | Version state schema; fetch version byte first. |
 | **Backwards compatibility** | Breaks merchant integration. | Semantic versioning; handle optional fields via `unknown`. |
-| **Network fork** | Expired blockhash. | Use `getLatestBlockhash(finalized)` + retry loop. |
-| **Fee payer rotation** | Hard-coded failure. | Configurable via `Wallet` interface. |
+| **Network fork** | Expired blockhash during UI intent creation. | Use `getLatestBlockhash(finalized)` + retry loop in frontend before signing. |
+| **Fee payer rotation** | Hard-coded failure. | Configurable via `Wallet` interface; Backend injects dynamic fee payer. |
 
 ### 4. Infrastructure & Deployment
 
@@ -413,4 +419,3 @@ Every component engineered in this repository must strictly adhere to these 20 e
 | **Fail‑safe defaults** | Assume safest behaviour if feature flags are missing (e.g., pause minting). |
 | **Upgradeability proxy** | Deploy minimal immutable proxy delegating to implementation program. |
 | **Observability as code** | Surface edge cases: idempotency replay counters, webhook DLQ depth, KMS latency. |
-
