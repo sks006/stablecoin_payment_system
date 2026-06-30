@@ -1,7 +1,7 @@
+    Blocking waiting for file lock on package cache
     Updating crates.io index
-error: failed to select a version for the requirement `aws-sdk-kms = "^0.56"`
-candidate versions found which didn't match: 1.111.0, 1.110.0, 1.109.0, ...
-location searched: crates.io index
+error: no matching package found
+searched package name: `shared-memory`
+perhaps you meant:      shared_memory
+location searched: /home/seam/Desktop/project/stablecoin-payment-system/onchain/programs/shared_memory
 required by package `orchestrator v0.1.0 (/home/seam/Desktop/project/stablecoin-payment-system/orchestrator)`
-if you are looking for the prerelease package it needs to be specified explicitly
-    aws-sdk-kms = { version = "0.0.26-alpha" }

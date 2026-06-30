@@ -1,20 +1,14 @@
-use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "anchor-bridge")]
+pub const INIT_VAULT: &[u8] = b"init_vault";
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
-pub struct MintJitPayload {
-    pub amount: u64,
-    pub nonce: u64,
-}
+#[cfg(feature = "anchor-bridge")]
+pub const SET_ADMIN_CONFIG: &[u8] = b"set_admin_config";
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
-pub struct LiquidatePayload {
-    pub max_debt_to_cover: u64,
-}
+#[cfg(feature = "native-bridge")]
+pub const MINT_JIT: &[u8] = b"mint_jit";
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
-pub struct SettlePayload {
-    pub amount: u64,
-}
+#[cfg(feature = "native-bridge")]
+pub const LIQUIDATE: &[u8] = b"liquidate";
+
+#[cfg(feature = "native-bridge")]
+pub const SETTLE: &[u8] = b"settle";

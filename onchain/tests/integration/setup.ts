@@ -1,8 +1,6 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { AnchorProvider, Program, web3 } from '@coral-xyz/anchor';
 
-export const getProvider = (): anchor.AnchorProvider => {
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-  return provider;
-};
+export async function setupLocalEnvironment() {
+  const connection = new web3.Connection('http://127.0.0.1:8899', 'processed');
+  return { connection };
+}
