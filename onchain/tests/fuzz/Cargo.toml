@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-trident-client = "0.1.0"
+proptest = "1.5"
