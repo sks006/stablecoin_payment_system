@@ -1,6 +1,8 @@
 # 🏦 Stablecoin Payment System
 
-> A high-performance, dual-implementation (Anchor reference + native zero-copy) Solana stablecoin payment rail with an enterprise-grade orchestrator, idempotent APIs, webhook reliability, and future-proof on-chain state.
+> Production-ready stablecoin payment rail on Solana — dual Anchor + native zero-copy, enterprise orchestrator with exact-once guarantees, Jito bundles, idempotent APIs, and reliable webhooks.
+> Key Production Features”, “How to Run Locally”, “Architecture Decisions & Trade-offs”, “Security & Threat Model Summary
+
 
 ## 📑 Table of Contents
 
