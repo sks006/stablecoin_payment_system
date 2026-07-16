@@ -216,6 +216,12 @@ stablecoin-payment-system/
 │   │   │   │   └── migrations/
 │   │   │   │       ├── 20260101000000_init.sql
 │   │   │   │       └── 20260102000000_add_webhook_delivery.sql
+|   |   |   ├──indexer/
+|   |   |   |       ├── mod.rs
+|   |   |   |       ├── geyser_client.rs
+|   |   |   |       ├── transaction_parser.rs
+|   |   |   |       ├── account_watcher.rs
+|   |   |   |       └── event_processor.rs
 │   │   │   ├── cache/
 │   │   │   │   ├── mod.rs
 │   │   │   │   └── redis.rs
