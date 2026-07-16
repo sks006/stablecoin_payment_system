@@ -213,6 +213,7 @@ stablecoin-payment-system/
 │   │   │   │   │   ├── payment_repo.rs
 │   │   │   │   │   ├── idempotency_repo.rs
 │   │   │   │   │   └── webhook_repo.rs
+│   │   │   │   |   └── reconciliation_repo.rs 
 │   │   │   │   └── migrations/
 │   │   │   │       ├── 20260101000000_init.sql
 │   │   │   │       └── 20260102000000_add_webhook_delivery.sql
@@ -230,8 +231,21 @@ stablecoin-payment-system/
 │   │   │   │   ├── sender.rs
 │   │   │   │   └── signature.rs
 │   │   │   └── metrics/
-│   │   │       ├── mod.rs
-│   │   │       └── prometheus.rs
+│   │   │   │     ├── mod.rs
+│   │   │   │     └── prometheus.rs
+│   │   │   ├── reconciliation/        # ← NEW: Critical for payments
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── engine.rs
+│   │   │   │   └── mismatch_detector.rs
+│   │   │   ├── observability/
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── tracing.rs         # OpenTelemetry
+│   │   │   │   ├── metrics.rs         # Prometheus
+│   │   │   │   └── logging.rs
+│   │   │   │
+│   │   │   ├── resilience/            # ← NEW
+│   │   │   │   ├── circuit_breaker.rs
+│   │   │   │   └── retry.rs
 │   │   ├── api/
 │   │   │   ├── mod.rs
 │   │   │   ├── http/
@@ -256,15 +270,16 @@ stablecoin-payment-system/
 │   │   └── jobs/
 │   │       ├── mod.rs
 │   │       ├── webhook_retry_worker.rs
+│   │       ├── reconciliation_job.rs 
 │   │       └── transaction_confirmation_poller.rs
 │   └── tests/
-│       ├── integration/
-│       │   ├── mint_api_test.rs
-│       │   ├── idempotency_test.rs
-│       │   └── webhook_test.rs
-│       └── e2e/
-│           └── localnet.rs
-│
+│   |    ├── integration/
+│   |    │   ├── mint_api_test.rs
+│   |    │   ├── idempotency_test.rs
+│   |    │   └── webhook_test.rs
+│   |    └── e2e/
+│   |        └── localnet.rs
+
 ├── sdk-client/                        # Zero-Dependency Client Abstraction Layer (TS)
 │   ├── package.json
 │   ├── tsconfig.json
@@ -287,6 +302,10 @@ stablecoin-payment-system/
 │   │   └── variables.tf
 │   └── ansible/
 │       └── playbook.yml
+├── scripts/                           # New folder
+|        ├── setup-localnet.sh
+|        ├── load-test.sh
+|        └── benchmark.sh
 │
 └── docs/
     ├── architecture.md                # Structural technical blueprints
