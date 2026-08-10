@@ -1,14 +1,29 @@
-#[cfg(feature = "anchor-bridge")]
-pub const INIT_VAULT: &[u8] = b"init_vault";
+// shared_memory/src/instructions.rs
 
-#[cfg(feature = "anchor-bridge")]
-pub const SET_ADMIN_CONFIG: &[u8] = b"set_admin_config";
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeInstruction {
+    MintJit = 0,
+    Liquidate = 1,
+    Settle = 2,
+}
 
-#[cfg(feature = "native-bridge")]
-pub const MINT_JIT: &[u8] = b"mint_jit";
+#[repr(C)]
+#[derive(Copy, Clone)]
+// Enforce bytemuck::Pod and bytemuck::Zeroable traits
+pub struct MintJitPayload {
+    pub instruction_id: u8,       // 1 byte (Must map to NativeInstruction::MintJit)
+    pub amount: u64,              // 8 bytes
+    pub expected_fee_bps: u16,    // 2 bytes
+    pub _padding: [u8; 5],        // 5 bytes: Aligns 11 bytes up to 16
+}
 
-#[cfg(feature = "native-bridge")]
-pub const LIQUIDATE: &[u8] = b"liquidate";
-
-#[cfg(feature = "native-bridge")]
-pub const SETTLE: &[u8] = b"settle";
+#[repr(C)]
+#[derive(Copy, Clone)]
+// Enforce bytemuck::Pod and bytemuck::Zeroable traits
+pub struct LiquidatePayload {
+    pub instruction_id: u8,       // 1 byte
+    pub target_debt_shares: u64,  // 8 bytes
+    pub slippage_tolerance: u64,  // 8 bytes
+    pub _padding: [u8; 7],        // 7 bytes: Aligns 17 bytes up to 24
+}
