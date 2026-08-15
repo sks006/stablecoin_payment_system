@@ -1,81 +1,109 @@
-// Target: native_stablecoin/src/instructions/mint_jit.rs
-
-use shared_memory::error::{OrchestratorError, ErrorConversion};
+use share_memory::error::{OrchestratorError,ErrorConversion};
 use solana_program::{
-    account_info::{AccountInfo, next_account_info},
+    account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    program_error::ProgramError,
+    program::invoke,
     pubkey::Pubkey,
-};
-use shared_memory::state::FixedPoint;
-use crate::state_parser::load_mut_vault_state;
 
-pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) -> ProgramResult {
-    // === 1. The Iterator Extraction ===
-    // Safely extract the Funder, Vault, Collateral Mint, and Token Program accounts.
+}
 
-    let account_iter = &mut accounts.iter();
+use spl_token::instruction::transfer;
+use crate::state_parsers::load_mut_vault_state;
 
-    let _funder_info = next_account_info(account_iter)?;
-    let vault_info = next_account_info(account_iter)?;
-    let _collateral_mint_info = next_account_info(account_iter)?;
-    let _token_program_info = next_account_info(account_iter)?;
-
-    // === 2. The Hardware Validation ===
-    // Execute state_parser::load_mut_vault_state(vault_info, program_id)?
-    // This yields the secure RefMut<'_, JitVaultState>.
-    let vault_state = load_mut_vault_state(vault_info, program_id)?;
-
-    // === 3. Payload Deserialization ===
-    // Extract the requested `debt_amount` and `collateral_deposit` (as u64s)
-    // directly from the payload slice using try_into() on raw byte chunks.
-    let (debt_amount_bytes, rest) = payload.split_at(8);
-    let (collateral_deposit_bytes, _remaining) = rest.split_at(8);
-
-    let requested_debt_amount = u64::from_le_bytes(debt_amount_bytes.try_into().unwrap());
-    let requested_collateral_deposit =
-        u64::from_le_bytes(collateral_deposit_bytes.try_into().unwrap());
+pub fn process(program_id:&Pubkey, accounts:&[AccountInfo],payload:&[u8])-> ProgramResult{
     
-    // === STEP 4: The Mathematical Risk Boundary (Fixed‑Point Correct) ===
+ let accounts_iter = &mut accounts.iter();
+ let funder_wallet_info= next_account_info(account_info)?;
+ let funder_token_info=next_account_info(account_info)?;
+ let vault_info=next_account_info(account_info)?;
+ let vault_token_info=next_account_info(account_info)?;
+ let collateral_mint_info=next_account_info(account_info)?;
+ let token_program_info=next_account_info(account_info)?;
+ 
+ //Signer checks
+ 
+ if !funder_wallet_info.is_signer{
+    return Err(OrchestratorError::AccountNotSigner("funder_wallet").to_program_error());
+ }
+//2 hardware validation (zero-copy lock)
+ let vault_state=load_mut_vault_state(vault_info,program_id)?;
+ //3 Collateral mint binding (prevents fake-token attacks)
+ if collateral_mint_info.key !=vault_state.collateral_mint{
+    return Err(
+        ProgramResult::from(OrchestratorError::CollateralMintMismatch.to_program_error())
+    )
+ }
+ //4 Bounds check (prevents panic on short payload)
+ if payload.len()<16{
+    return Err(OrchestratorError::InvalidInstructionData.to_program_error());
+ }
+ //5 safe deserialization (error wrapsinto programError)
 
-    // 1. Project post-transaction balances (cast to i128 for precision)
-    let pre_collateral: i128 = vault_state.total_collateral.into();
-    let pre_debt: i128 = vault_state.total_debt_shares.into();
-    let post_collateral = pre_collateral
-        .checked_add(requested_collateral_deposit as i128)
-        .ok_or_else(|| ProgramError::from(OrchestratorError::MathOverflow.into_program_error()))?;
-    let post_debt = pre_debt
-        .checked_add(requested_debt_amount as i128)
-        .ok_or_else(|| ProgramError::from(OrchestratorError::MathOverflow.into_program_error()))?;
+ let (debt_byte,collateral_bytes)=payload.split_at(8)
+debt_bytes.try_into().map_err(|_| OrchestratorError::InvalidInstructionData.to_program_error())? 
 
-    // Prevent division by zero (debt must always exist)
-    if post_debt == 0 {
-        return Err(ProgramError::from(OrchestratorError::MathOverflow.into_program_error()));
-    }
+let requested_collateral_deposit=u64::from_le_bytes(collateral_bytes.try_into().map_err(|_|{
+    programError::InvalidInstructionData.into_program_error()
+})?);
 
-    // 2. Precision shift: collateral * 2^48 to align with fixed‑point ratio format
-    let collateral_scaled = post_collateral
-        .checked_shl(48)
-        .ok_or_else(|| ProgramError::from(OrchestratorError::MathOverflow.into_program_error()))?;
+//6 Mathematical risk boundary (fixed-point)------
 
-    // 3. Safe division: scaled collateral / debt yields a fixed‑point ratio (I80F48)
-    let new_ratio_bits = collateral_scaled
-        .checked_div(post_debt)
-        .ok_or_else(|| ProgramError::from(OrchestratorError::MathOverflow.into_program_error()))?;
+let pre_collateral:i128= vault_state.total_collateral.into();
 
-    // 4. Extract the vault’s **stored** minimum collateral ratio (from memory, not hardcoded)
-    let min_ratio_bits = vault_state.min_collateral_ratio.to_bits(); // i128 already in I80F48 format
+let pre_debt:i128=vault_state.total_debt_share();
 
-    // 5. Threshold check: reject if new ratio is below the vault’s risk boundary
-    if new_ratio_bits < min_ratio_bits {
-        return Err(ProgramError::from(OrchestratorError::CollateralRatioTooLow.into_program_error()));
-    }
+let post_collateral=pre_collateral
+.checked_add(requested_collateral_deposit as i128).ok_or_else(||OrchestratorError::MathOverflow.to_program_error())?;
 
-    // === 6. State Mutation ===
-    // vault.total_collateral += collateral_deposit;
-    // vault.total_debt_shares += debt_amount;
+let post_debt=pre_debt.checked_add(debt_amount as i128).ok_or_else(||OrchestratorError::MathOverflow.to_program_error())?;
+
+if post_debt==0{
+    return Err(programError::from(OrchestratorError::MathOverflow.into_program_error()));
+}
+
+let collateral_scaler= post_collateral.checked_shl(48)
+.ok_or_else(||{
+    programError::MathOverflow.into_program_error()
+})?;
+
+let new_ratio_bits=collateral_scaled.checked_div(post_debt)
+.ok_or_else(||{
+    programError::MathOverflow.into_program_error()
+})?;
+
+let min_ratio_bits=i128::from_le_bytes(vault_state.min_collateral_ratio.bits);
+if new_ratio_bits<min_ratio_bits{
+    return Err(programError::from(
+        OrchestratorError::CollateralRationTooLow.into_program_error()
+    ))   
+}
+  
+  // 7 physical token transfer (CPI actual token movement)
+
+  let transfer_ix=transfer(
+    token_program_info.key,
+    funder_token_info.key, //source ATA
+    vault_token_info.key, //destination AT
+    funder_wallet_info.key, // owner
+    &[funder_wallet_info.key] // signer
+    requested_collateral_deposit
+  )?;
+
+  invoke(
+    &transfer_ix,
+    &[
+        token_program_info.clone(),
+        funder_token_info.clone(),
+        vault_token_info.clone(),
+        funder_wallet_info.clone(),
+    ]
+  )?;
+
+    // ---- 8. State mutation (only after tokens are moved) ----
     vault_state.total_collateral = post_collateral as u64;
     vault_state.total_debt_shares = post_debt as u64;
 
     Ok(())
+
+
 }
