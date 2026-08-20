@@ -25,6 +25,19 @@ pub enum OrchestratorError {
     InvalidAccountSize = 6009,
     AccountNotMutable = 6010,
     InvalidAccountDiscriminator = 6011,
+
+    // === NEW MISSING ERRORS ===
+    AccountNotSigner = 6012,
+    CollateralMintMismatch = 6013,
+    InvalidInstructionData = 6014,
+    InvalidOracleOwner = 6015,
+    OraclePriceUnavailable = 6016,
+    StaleOraclePrice = 6017,
+    OracleConfidenceTooWide = 6018,
+    VaultHealthy = 6019,
+    InvalidAccountData = 6020,
+    DebtMintMismatch = 6021,
+    Unauthorized = 6022,
 }
 
 // Abstract trait for cross-program error mapping
@@ -38,12 +51,12 @@ impl ErrorConversion for OrchestratorError {
     }
 }
 
-#[cfg(feature = "anchor-bridge")]
-impl From<OrchestratorError> for anchor_lang::prelude::ProgramError {
+impl From<OrchestratorError> for solana_program::program_error::ProgramError {
     fn from(error: OrchestratorError) -> Self {
-        anchor_lang::prelude::ProgramError::Custom(error as u32)
+        solana_program::program_error::ProgramError::Custom(error as u32)
     }
 }
+
 
 #[cfg(feature = "anchor-bridge")]
 impl From<OrchestratorError> for anchor_lang::error::Error {

@@ -1,3 +1,5 @@
+// native_stablecoin/src/entrypoint.rs
+
 #![cfg(not(feature = "custom-heap"))]
 
 use solana_program::{
@@ -10,9 +12,9 @@ use solana_program::{
 entrypoint!(process_instruction);
 
 pub fn process_instruction(
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _instruction_data: &[u8]
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
 ) -> ProgramResult {
-    Ok(())
+    crate::processor::process_instruction(program_id, accounts, instruction_data)
 }
