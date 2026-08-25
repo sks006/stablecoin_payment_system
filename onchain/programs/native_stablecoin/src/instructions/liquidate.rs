@@ -7,6 +7,7 @@ use solana_program::{
     program::invoke,
     program::invoke_signed,
     program_error::ProgramError,
+    program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{clock::Clock, Sysvar},
 };
@@ -14,11 +15,12 @@ use spl_token::{
     instruction::{burn, transfer},
     state::Mint,
 };
-use pyth_sdk_solana::load_price_feed_from_account_info;
+use pyth_sdk_solana::state::SolanaPriceAccount;
 use crate::state_parser::load_mut_vault_state;
 
 const MAX_STALENESS_SECONDS: i64 = 60;
 const MAX_CONFIDENCE_PERCENT: u64 = 1;
+const PYTH_PROGRAM_ID: Pubkey = solana_program::pubkey!("FsJ3A3u2vn5cTVofbdjiTv2u4qD11PxsF9gzxJnyQQca");
 
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) -> ProgramResult {
     let account_iter = &mut accounts.iter();
@@ -43,7 +45,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) ->
     // ============================================================
     // PHASE 2: HARDWARE LOCK & MINT BINDING
     // ============================================================
-    let vault_state = load_mut_vault_state(vault_info, program_id)?;
+    let vault_state = load_mut_vault_state(vault_info.clone(), program_id)?;
 
     // ফিক্স ৩: মিন্ট বাইন্ডিং যাচাই
     if collateral_mint_info.key.to_bytes() != vault_state.collateral_mint {
@@ -60,18 +62,16 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) ->
     // ============================================================
     // PHASE 3: ORACLE SANITIZATION
     // ============================================================
-    if oracle_info.owner != &pyth_sdk_solana::ID {
+    if oracle_info.owner != &PYTH_PROGRAM_ID {
         return Err(ProgramError::from(
             OrchestratorError::InvalidOracleOwner.into_program_error(),
         ));
     }
 
-    let price_feed = load_price_feed_from_account_info(oracle_info).map_err(|_| {
+    let price_feed = SolanaPriceAccount::account_info_to_feed(oracle_info).map_err(|_| {
         ProgramError::from(OrchestratorError::OraclePriceUnavailable.into_program_error())
     })?;
-    let current_price = price_feed.get_current_price().ok_or_else(|| {
-        ProgramError::from(OrchestratorError::OraclePriceUnavailable.into_program_error())
-    })?;
+    let current_price = price_feed.get_price_unchecked();
 
     let clock = Clock::get()?;
     let staleness = clock

@@ -13,5 +13,5 @@ crate-type = ["rlib"]
 
 [dependencies]
 anchor-lang = { version = "0.30.0", optional = true }
-solana-program = "2.0.0"
+solana-program = "1.18.26"
 bytemuck = { version = "1.18.0", features = ["derive", "min_const_generics"] }

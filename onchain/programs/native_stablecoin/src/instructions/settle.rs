@@ -8,10 +8,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use spl_token::{
-    instruction::burn,
-    state::Mint,
-};
+use spl_token::instruction::burn;
 use crate::state_parser::load_mut_vault_state;
 
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) -> ProgramResult {
@@ -34,7 +31,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], payload: &[u8]) ->
     // ============================================================
     // PHASE 2: HARDWARE LOCK & MINT BINDING
     // ============================================================
-    let vault_state = load_mut_vault_state(vault_info, program_id)?;
+    let vault_state = load_mut_vault_state(vault_info.clone(), program_id)?;
 
     // ভল্টের সংরক্ষিত ডেট মিন্টের সাথে সরবরাহকৃত মিন্ট মেলানো
     if debt_mint_info.key.to_bytes() != vault_state.debt_mint {

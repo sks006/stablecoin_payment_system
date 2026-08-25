@@ -3,8 +3,13 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct MintRequest {
     pub idempotency_key: String,
-    pub amount: u64,
-    pub recipient: String,
+    pub funder_wallet: String,
+    pub funder_token: String,
+    pub vault: String,
+    pub vault_token: String,
+    pub collateral_mint: String,
+    pub debt_amount: u64,
+    pub collateral_deposit: u64,
 }
 
 #[derive(Debug, Deserialize)]

@@ -12,9 +12,9 @@ use shared_memory::{
 
 /// Safely extracts and validates a VaultState from a raw AccountInfo.
 pub fn load_mut_vault_state<'a>(
-    account: &'a AccountInfo,
+    account: AccountInfo<'a>,
     program_id: &Pubkey,
-) -> Result<&'a JitVaultState, ProgramError> {
+) -> Result<&'a mut JitVaultState, ProgramError> {
     
     // === GATE 1: The Ownership Verification ===
     // You must verify that the Sealevel VM recognizes your program as the owner.
