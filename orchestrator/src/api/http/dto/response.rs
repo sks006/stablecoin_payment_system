@@ -8,3 +8,9 @@ pub struct PaymentResponse {
     pub status: String,
     pub signature: Option<String>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct MintResponse {
+    pub signature: String,
+    pub status: String,
+}

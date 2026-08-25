@@ -28,7 +28,7 @@ impl RedisCache {
             .await
             .map_err(|e| crate::domain::error::Error::Cache(e.to_string()))?;
             
-        conn.set_ex(key, value, ttl_secs)
+        conn.set_ex::<_, _, ()>(key, value, ttl_secs)
             .await
             .map_err(|e| crate::domain::error::Error::Cache(e.to_string()))?;
             

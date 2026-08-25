@@ -9,4 +9,5 @@ pub struct Settings {
     pub port: u16,
     pub kms_key_id: String,
     pub webhook_secret: String,
+    pub webhook_url: String,
 }

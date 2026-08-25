@@ -3,23 +3,40 @@ use axum::{
     Router,
 };
 use std::net::SocketAddr;
-use crate::config::Settings;
+use std::sync::Arc;
+use tokio::sync::broadcast;
+use crate::application::mint_service::MintService;
 use crate::api::http::handlers;
+use crate::api::http::middleware;
 
-pub async fn start(settings: &Settings) -> Result<(), crate::domain::error::Error> {
+#[derive(Clone)]
+pub struct AppState {
+    pub mint_service: Arc<MintService>,
+}
+
+pub async fn start(
+    port: u16,
+    mint_service: Arc<MintService>,
+    mut shutdown_rx: broadcast::Receiver<()>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/health", get(handlers::health::handle))
-        .route("/api/v1/mint", post(handlers::mint::handle))
-        .route("/api/v1/transfer", post(handlers::transfer::handle))
-        .route("/api/v1/burn", post(handlers::burn::handle))
-        .route("/api/v1/webhook", post(handlers::webhook::handle));
+        .route("/mint", post(handlers::mint::handle))
+        .with_state(AppState { mint_service })
+        .layer(axum::middleware::from_fn(middleware::auth::require_valid_auth)) // innermost
+        .layer(axum::middleware::from_fn(middleware::rate_limiter::rate_limit))
+        .layer(axum::middleware::from_fn(middleware::request_id::add_request_id)); // outermost
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], settings.port));
-    tracing::info!("Server running on {}", addr);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!("HTTP server listening on http://{}", addr);
+
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
-        .await
-        .map_err(|e| crate::domain::error::Error::Infrastructure(e.to_string()))?;
+        .with_graceful_shutdown(async move {
+            let _ = shutdown_rx.recv().await;
+            tracing::info!("Graceful shutdown initiated: no new requests accepted");
+        })
+        .await?;
 
     Ok(())
 }

@@ -38,6 +38,12 @@ pub enum OrchestratorError {
     InvalidAccountData = 6020,
     DebtMintMismatch = 6021,
     Unauthorized = 6022,
+    IdempotencyConflict = 6023,
+    KmsUnavailable = 6024,
+    KmsTimeout = 6025,
+    InvalidPubkey = 6026,
+    SolanaRpcError = 6027,
+    BlockhashExpired = 6028,
 }
 
 // Abstract trait for cross-program error mapping
